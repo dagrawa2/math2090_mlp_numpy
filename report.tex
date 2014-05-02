@@ -1,0 +1,130 @@
+\documentclass[12pt]{article}
+\usepackage[margin=1in]{geometry}
+\usepackage{amsmath, amssymb, amsfonts, graphicx, url}
+
+\newcommand{\vecx}{\mathbf{x}}
+\newcommand{\vecy}{\mathbf{y}}
+\newcommand{\vecb}{\mathbf{b}}
+\newcommand{\matW}{\mathbf{W}}
+\newcommand{\pdiff}[2]{\frac{\partial #1}{\partial #2}}
+\newcommand{\RR}{\mathbb{R}}
+\newcommand{\del}{\mathbf{\nabla}}
+\newcommand{\vdelta}{\mathbf{\delta}}
+\newcommand{\Xtrain}{X_{\text{train}}}
+\newcommand{\Ytrain}{Y_{\text{train}}}
+\newcommand{\Xtest}{X_{\text{test}}}
+\newcommand{\Ytest}{Y_{\text{test}}}
+
+\title{The Effect of Hidden Neurons on the Performance of a Neural Network Classifier and Autoencoder}
+\author{Devanshu Agrawal}
+\date{May 2, 2014}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+A neural network is a mathematical object that processes information in a way similar to a biological brain. I used a neural network to classify and autoencode images of handwritten zeros and ones (i.e., the digits ``0'' and ``1''). Autoencoding is the process in which an input is first ``encoded'' into a lower-dimensional space and is then ``decoded'' back and reconstructed in the original space. I studied the error in classification and autoencoding as a function of the number of hidden neurons in my neural network. I found that it is possible to compress the image data into a space significantly smaller than the input space.
+\end{abstract}
+
+\section{Introduction}
+
+An artificial neural network (or simply neural network) is a mathematical function $f$ that typically maps $[0,1]^m$ into $[0,1]^n$ by passing its input through a network of transformations. This occurs in a way that is analogous to the propagation of a signal in a biological nervous system, hence the term ``neural network.'' A neural network can be seen as a directed graph with weighted edges. The nodes of the graph are called ``neurons.'' The edges can be thought to represent synapses, in which case the weights represent the strengths of synaptic signals. The exact mapping from input to output is not explicit but is instead encoded in the architecture of the network itself; the mapping depends on the connectivity of the neurons and in particular on the synaptic weights. In this way, neural networks are able to represent very complicated input/output relationships and are therefore very useful for data fitting. In particular, like their biological counterparts, neural networks are capable of ``learning'' and recognizing patterns in data. In this sense, neural networks are instances of artificial intelligence \cite{neural}.
+
+One of the simplest and most studied kinds of neural networks is the multi-layer perceptron. A perceptron is a feedforward neural network, meaning that it is a directed graph with no directed cycles. Thus, the neurons in a perceptron can be arranged into a sequence of ``layers'' such that information is fed from one layer to the next in only one direction. Consider a perceptron with three layers: an ``input'' layer with $n_0$ input neurons, one ``hidden'' layer with $n_1$ hidden neurons, and an ``output'' layer with $n_2$ output neurons. The input layer receives an external input vector from $[0,1]^{n_0}$ and the output layer returns a final output vector in $[0,1]^{n_2}$. Neurons in the hidden layer are not connected to any external input or output but only to other neurons. In particular, for every input neuron and hidden neuron, there is an edge directed from the former to the latter. Similarly, for every hidden neuron and output neuron, there is an edge directed from the former to the latter. Thus, information flows from input layer to hidden layer to output layer \cite{wikipedia}.
+
+Let $\matW_0$ be an $n_0\times n_1$ matrix such that the entry $W_{0,ij}$ is the weight of the edge from the $i$th input neuron to the $j$ hidden neuron. Similarly, let $\matW_1$ be an $n_1\times n_2$ matrix such that $W_{1,ij}$ is the weight of the edge directed from the $i$th hidden neuron to the $j$th output neuron. We refer to $\matW_0$ and $\matW_1$ as ``weight matrices.'' Suppose the perceptron receives an input $\vecx_0 \in [0, 1]^{n_0}$. This means that the $i$th input neuron is activated and fires a signal with strength or ``activation energy'' $x_{0,i}$ to each hidden neuron. Thanks to the weights, the net input received by the $j$th hidden neuron is the weighted sum
+\[ \sum_{k=1}^{n_0} x_{0,k} W_{0,kj}. \]
+This input activates the $j$th hidden neuron, which then fires a signal with activation energy
+\[ x_{1,j} = \sigma\left( \sum_{k=1}^{n_0} x_{0,k} W_{0,kj} \right), \]
+where $\sigma:\RR\to(0, 1)$ is called the ``activation function'' and is typically chosen to be an increasing sigmoid curve, such as the logistic function:
+\[ \sigma(x) = \frac{1}{1+e^{-x}}. \]
+ It is the nonlinearity of $\sigma$ that gives a neural network its power and flexibility \cite{perceptron}.
+
+It is common to add a ``bias neuron'' to each of the input layer and the hidden layer. A bias neuron is a neuron that fires with fixed activation energy $1$. Let $\vecb_0$ be a $n_1\times 1$ vector such that $b_{0,i}$ is the weight of the edge from the input bias neuron to $i$th the hidden neuron. Similarly, let $\vecb_1$ be the $n_2\times 1$ vector of weights from the hidden bias neuron to the output neurons. Then, the vector of activation energies with which the hidden neurons fire is given by
+\[ \vecx_1 = \sigma(\vecx_0\matW_0+\vecb_0), \]
+where $\sigma$ is evaluated entry-wise. Similarly, the final output (i.e., the activation energies of the output neurons) is given by
+\[ \vecx_2 = \sigma(\vecx_1\matW_1+\vecb_1). \]
+Define the maps $f_k:[0,1]^{n_k}\to[0,1]^{n_{k+1}}$ for $k=0,1$ given by
+\begin{equation} \label{fk}
+f_k(\vecx) = \sigma(\vecx\matW_k+\vecb_k).
+\end{equation}
+Then, the perceptron is a function $f$ given by the composition $f = f_1\circ f_0$ \cite{perceptron}.
+
+The most common learning algorithm used to train a multi-layer perceptron is ``backward propagation of errors'' with gradient descent, or simply ``back propagation.'' This is a form of supervised learning, meaning that the perceptron is manually taught to reproduce a training set of data to the best of its ability. Suppose $(\vecx, \vecy)$ is an input/output pair in the training set. Given $\vecx_0 = \vecx$, the perceptron is allowed to produce an intermediate output $\vecx_1$ (by the hidden layer) an then a final output $\vecx_2 = f(\vecx)$. For fixed $(\vecx,\vecy)$, the error in output is given by
+\begin{equation} \label{error}
+E(\matW_0,\matW_1,\vecb_0,\vecb_1) = \frac{1}{2} (\vecx_2-\vecy)^2.
+\end{equation}
+Notice that $E$ is a function of the weights. It is possible to compute the gradient of the error function $\del E$ with respect to the weights. Define the delta vectors
+\begin{align} \label{delta1}
+\vdelta_1 &= (\vecx_2-\vecy)\otimes \sigma'(\sigma^{-1}(\vecx_2)) \\
+\label{delta0}
+\vdelta_0 &= \vdelta_1\otimes \sigma'(\sigma^{-1}(\vecx_1))\matW_1^\top.,
+\end{align}
+where $\otimes$ denotes the direct product. The weights are then updated according to
+\begin{align} \label{weights_update}
+\Delta W_{k,ij} &= -\alpha \pdiff{E}{W_{k,ij}}
+= -\alpha x_{k,i} \delta_{k,j} \\
+\label{bias_update}
+\Delta b_{k,ij} &= -\alpha \pdiff{E}{b_{k,ij}}
+= -\alpha \delta_{k,j},
+\end{align}
+where $\alpha$ is a parameter called the ``learning rate.'' In essence, gradient descent is the process in which the weights of the perceptron are adjusted in a step-by-step fashion until the error in output reaches a minimum. The step size of the weight adjustment is the learning rate $\alpha$. Thus, a smaller learning rate gives greater accuracy ultimately, but it is at the cost of longer training \cite{nature}.
+
+Once a neural network is trained, it can be used to predict the output for a new input not in the training set. That is, the neural network can perform regression on data. The beauty of a neural network when used for regression is that there is no need to ``guess' a model function (such as a polynomial or exponential) beforehand. In some sense, the neural network is itself the model, and thanks to the nonlinear activation function, even a simple perceptron with one hidden layer is a ``universal approximator.'' Essentially, the perceptron is able to measure the extent to which an input follows the trend of the training set and is then able to compute an appropriate output.
+
+An interesting class of functions that perceptrons are able to approximate very well arise in the task of classification. When a neural network is used for classification, it is called a ``classifier.'' A classifier is a function that maps a set of inputs into a set of categories or ``classes.'' For example, it is possible to train a perceptron to classify pixel images of handwritten digits based on the digits being displayed. Once the perceptron is trained as a classifier, it can classify new images of digits that were not in the training set \cite{classifier}. Clearly, the basis for classification is pattern recognition and in particular the ability to distinguish true variation from random variation in data. The presence of patterns in data is important because it indicates that there is far less information in the data than what appears. In other words, if a data set is not entirely random, then entropy is not at its maximum. This motivates another task that perceptrons can perform adequately-- autoencoding.
+
+When a neural network is used for the task of autoencoding, it is called an ``autoencoder.'' Formally, a 3-layer perceptron autoencoder is a function $f:[0,1]^{n_0}\to [0,1]^{n_2}$ such that $n_0=n_2$ and for all inputs $\vecx$ in the training set, $f(\vecx) = \vecx$. In other words, an autoencoder models the identity function in the sense that an autoencoder attempts to return an output that is a reconstruction of the input. Recall that $f = f_1\circ f_0$, where $f_k:[0,1]^{n_k}\to [0,1]^{n_{k+1}}$ for $k=0,1$. Consider a successful autoencoder with fewer hidden neurons than input neurons or output neurons; $n_1 < n_0 = n_2$. Then, $f_0$ maps the input data set into a lower-dimensional space, compressing the data. But $f_1$ is able to map the compressed data back into the original space such that none of the meaningful variation in the original data is lost. At most, only random variation or ``noise'' is lost in the reconstruction process. This means that $n_1$ dimensions are sufficient to describe variations in the input data. Thus, autoencoders are useful because they provide a way to both compress and to ``denoise'' data by encoding the data in a lower-dimensional space. We call $f_0$ the ``encoder'' and $f_1$ the ``decoder.'' Both the encoder and decoder contain the information needed to reconstruct the input in its original space, namely the extrinsic embedding of the data in $[0,1]^{n_0}$ \cite{autoencoder}.
+
+Since we would like to optimize the compression and denoising of data, we are motivated to ask the following question: What is the smallest number of hidden neurons $n_1=h$ such that a neural network is able to autoencode data sufficiently well? In this project, I address this question applied to a particular case. I consider as data a set of 8-by-8 pixel images of handwritten zeros and ones (i.e., the digits ``0'' and ``1''), and I use a 3-layer perceptron with 64 input neurons, $h$ hidden neurons , and 65 output neurons. In Section 2, I describe the method by which I constructed my perceptron and trained it so that the first 64 output neurons return a reconstruction of the input image (autoencoding) and the 65th output neuron classifies the image as either a zero or one. In Section 3, I present the error in autoencoding and classification as a function of the number of hidden neurons $h$ in my perceptron. Finally, in Section 4, I use the results from Section 3 to draw conclusions on the effect of hidden neurons on the accuracy of autoencoding and classification.
+
+\section{Methods}
+
+I implemented by neural network in the programming language Python with the `numpy' module. My code is a modification and significant extension of an existing Python script for a simple handwritten digit classifier \cite{code}. The code extensively uses the `append' method for lists during loops. This approach speeds up the code considerably.
+
+To construct a neural network in Python, I first defined a neural network class object called `NeuralNetwork'. There are a number of attributes that are initialized when an instance self~=~NeuralNetwork(layers,~`attribute') is defined. The `layers' attribute lists the number of neurons in each layer of the neural network (hence, the neural network is a multi-layer perceptron). For my project, `layers' has three entries. The `activation' attribute refers to the activation function $\sigma$ that will be used if the neural network is run. For my project, I chose to use the sigmoid activation function given by
+\[ \sigma(x) = \frac{\tanh(x)+1}{2}. \]
+I preferred this activation function over the logistic function because it yields better performance if using the error function given by Equation \eqref{error}. The `weights' attribute is the list of weight matrices $\matW_k$, whose entries are initialized to random values between $-0.25$ and $0.25$. The `bias' attribute is the list of bias weight vectors $\vecb_k$, whose entries are initialized to $0$.
+
+There are two methods attached to any instance of the NeuralNetwork class. The `fit' method is a procedure that trains the neural network. The `fit' method accepts as arguments a set of inputs for training $X$, the corresponding set of outputs $Y$, a learning rate $\alpha$, and a number of iterations $N$. The procedure trains the neural network using the methods of back propagation and stochastic gradient descent. In each iteration, an input vector $\vecx$ is selected at random from $X$, and the neural network is allowed to predict an output $f(\vecx) = f_1\circ f_0(\vecx)$, where $f_k$ is given by Equation \eqref{fk}. Using Equation \eqref{error}, the error between the predicted and true outputs is computed. The weights of the network are subsequently readjusted to decrease the output error, in accordance with Equations \eqref{delta1}--\eqref{bias_update}. This process is repeated $N$ times. The `predict' method simply accepts a single input vector and uses the neural network to return an output. The `predict' method differs from the `fit' method in that the latter stores the activation energies at every layer, while the former does not.
+
+With the `NeuralNetwork' class at my disposal, I proceeded to the application (i.e., the project) itself. From the `sklearn' module, I loaded the `digits' data set. This is a set of 1797 8-by-8 pixel images of handwritten digits from ``0'' through ``9'' \cite{sklearn_digits}. In the loaded data, each image is represented by a 64-vector listing the intensities of the 64 pixels in the image. I considered only a subset of the data, namely the 360 images of the digits ``0'' and ``1.'' Call this subset of data $X$. I normalized $X$ such that the lowest pixel intensity in $X$ is $0$ and the greatest is $1$. The set $X$ is only the set of input vectors. For each input vector $\vecx \in X$, I defined an output 65-vector $\vecy$ as the concatenation of $\vecx$ with either $0$ or $1$, which ever is the class of the input image. Let $Y$ be the set of all outputs $\vecy$. I used a procedure from `sklearn' to randomly split the data set $(X, Y)$ into a training set $(\Xtrain, \Ytrain)$ and a testing set $(\Xtest, \Ytest)$. This guarantees that a trained neural network will be used to predict the outputs for inputs not encountered before.
+
+With the training and testing sets prepared, I implemented the following: I defined a list $H$ such that every $h \in H$ is a number of hidden neurons for which I wanted to test my autoencoder and classifier. I implemented the following loop: For every $h \in H$, I defined an instance of a NeuralNetwork object with 64 input neurons, $h$ hidden neurons, and 65 output neurons. I trained my perceptron using 'fit' and the training set $(\Xtrain, \Ytrain)$. Then, I used `predict' to predict the output of every input in $\Xtest$. Call this set of predictions $P$. I then compared the predicted outputs $P$ with the true outputs $\Ytest$. I used a procedure from `sklearn' to compute the area under the ``receiver operating characteristic'' curve, which measures the accuracy of my perceptron as a binary classifier. I call this measure the ``ROC score.'' I also computed the root mean square (RMS) error between the input vector and its predicted reconstruction, giving a measure of the accuracy of my perceptron as an autoencoder. By doing this for various values of $h$, I was able to measure the accuracy of my classifier and autoencoder as a function of the number of hidden neurons in my perceptron. I used the `matplotlib.pyplot' module to plot my results.
+
+\section{Results}
+
+The list of values of $h$ (number of hidden neurons) for which I tested my perceptron is $H = [1,2,4,8,16,32]$. For each $h \in H$, I trained my perceptron using $N=5000$ iterations and a learning rate $\alpha=0.2$.
+
+The ROC score was computed to be $1.0$ for all $h \in H$. Thus, my perceptron is a perfect binary classifier on the input data, regardless of the number of neurons in the hidden layer. The RMS error between input and output images, however, varies with $h$ and displays a clear trend (Figure \ref{fig:error}). In particular, the RMS error decreases with $h$, so that more hidden neurons improve the performance of the autoencoder, though at a diminishing rate. Note that the values obtained for the ROC score and RMS error converge with the number of iterations $N$ used during training; in particular, the values appear convergent for $N=5000$.
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=4in]{error.png}
+\caption{\label{fig:error} Plot of the RMS error in pixel intensity between the set of input images and the set of reconstructed output images as a function of the number of hidden neurons $h$. The error decreases with $h$ but at a diminishing rate.}
+\end{figure}
+
+To visualize the RMS error in autoencoding, I plotted examples of reconstructed output images for the first two input images contained in the testing set $\Xtest$. We clearly see that while none of the outputs is identical to its respective input, the outputs with the greater number of hidden neurons ($h=32>1$) are more accurate reconstructions of the inputs (Figure \ref{fig:images}, see next page).
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=6in]{images.png}
+\caption{\label{fig:images} The autoencoded and reconstructed output images for two different numbers of hidden neurons-- $h = 1$ and $h=32$-- and two different input images-- a zero and a one. The output images for $h=32$ are more similar to their respective input images than are the output images for $h=1$.}
+\end{figure}
+
+\section{Conclusions}
+
+From the results, it is easy to conclude that one hidden neuron is sufficient for a 3-layer perceptron to perform perfect binary classification. But the minimum number of hidden neurons for which my perceptron is an adequate autoencoder is less obvious; there is no $h$ for which the RMS error in image reconstruction is significantly greater for $h$ hidden neurons than for $h+1$ hidden neurons (Figure \ref{fig:error}). Visually, it appears that $h=32$ hidden neurons are sufficient for an adequate reconstruction of at least two example images (Figure \ref{fig:images}). Further, the decreasing and plateauing trend of the RMS error with increasing hidden neurons suggests that $h=16$ hidden neurons is enough for an adequate autoencoder (Figure \ref{fig:error}). This conservative answer by itself tells us that the input data being used for this project can be compressed into a space with only one quarter of the dimensionality of the original input space.
+
+Being more liberal, let us note that the output images reconstructed using $h=1$ hidden neuron still appear similar to their respective input images; the reconstructions with one hidden neuron are inaccurate only in comparison to reconstructions with more hidden neurons (Figure \ref{fig:images}). Thus, we can conclude that just one hidden neuron is sufficient for my perceptron to be an ``adequate'' autoencoder. This final conclusion is, in fact, consistent with intuition: Since the input data set comprises two classes (images of zeros and ones), we expect that the data points aggregate into two distinct clusters in the 64-dimensional input space. Since the two clusters define a line passing through them, it is reasonable that one dimension would suffice to describe the ``meaningful'' variation in the data; variation within each cluster is noise.
+
+Notice that I did not test the cases $h=0$ and $h=64$. Both cases lead to the uninteresting construction of the identity function with no intermediate data compression. In other words, while these cases should lower the RMS error between input and output, the useful features of compression and noise reduction are lost. This actually helps to explain the residual RMS error observed in my perceptron even for $h=32$ hidden neurons (Figures \ref{fig:error} and \ref{fig:images}): Since my autoencoder denoises the input data, the reconstructed output will not necessarily match the input exactly. In some sense then, the low residual error indicates that my perceptron is not only an adequate data compressor but also a decent noise reducer.
+
+The most logical next step in the project would be to ask the same question after introducing a third class of data (e.g., the set of images of the digit ``2''). If the intuition described above is correct, and if the new class of data is not colinear with the two existing classes of data in the 64-dimensional input space, then we would expect that a minimum of $h=2$ hidden neurons would be needed for an adequate autoencoder (the RMS error should be significantly greater for $h=1$).
+
+
+\bibliographystyle{plain}
+\bibliography{references}
+
+\end{document}

@@ -1,0 +1,1 @@
+Final project for an introductory course on Python programming, where I implemented a multilayer perceptron in Numpy for image classification.
